@@ -55,7 +55,7 @@
             android:layout_height="match_parent"
             android:layout_marginBottom="30dp"
             android:background="@drawable/map_background"
-            android:elevation="5dp" />
+            android:elevation="55dp" />
 
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 

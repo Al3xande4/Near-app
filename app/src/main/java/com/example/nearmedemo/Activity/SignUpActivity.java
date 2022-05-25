@@ -1,12 +1,15 @@
 
 package com.example.nearmedemo.Activity;
 
+import androidx.activity.result.contract.ActivityResultContract;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
@@ -34,6 +37,9 @@ import com.google.firebase.storage.UploadTask;
 import com.theartofdev.edmodo.cropper.CropImage;
 import com.theartofdev.edmodo.cropper.CropImageView;
 
+import java.net.URI;
+import java.net.URISyntaxException;
+
 public class SignUpActivity extends AppCompatActivity {
     private ActivitySignUpBinding binding;
     private Uri imageUri;
@@ -41,6 +47,8 @@ public class SignUpActivity extends AppCompatActivity {
     private LoadingDialog loadingDialog;
     private String email, username, password;
     private StorageReference storageReference;
+    final int PIC_CROP = 1;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,7 +69,7 @@ public class SignUpActivity extends AppCompatActivity {
 
         binding.btnSignUp.setOnClickListener(view -> {
             if (areFieldReady()) {
-                if (imageUri != null) {
+                if (imageUri == null) {
                     signUp();
                 } else {
                     Toast.makeText(this, "Image is required", Toast.LENGTH_SHORT).show();
@@ -71,11 +79,45 @@ public class SignUpActivity extends AppCompatActivity {
 
         binding.imgPick.setOnClickListener(view -> {
             if (appPermissions.isStorageOk(this)) {
-                pickImage();
+                performCrop(imageUri);
             } else {
                 appPermissions.requestStoragePermission(this);
             }
         });
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        Bitmap selectedBitmap = Bitmap.createBitmap(10, 10, Bitmap.Config.ARGB_8888);
+        binding.imgPick.setImageBitmap(selectedBitmap);
+    }
+
+    private void performCrop(Uri picUri) {
+        try {
+            Intent cropIntent = new Intent("com.android.camera.action.CROP");
+            // indicate image type and Uri
+            cropIntent.setDataAndType(picUri, "image/*");
+            // set crop properties here
+            cropIntent.putExtra("crop", true);
+            // indicate aspect of desired crop
+            cropIntent.putExtra("aspectX", 1);
+            cropIntent.putExtra("aspectY", 1);
+            // indicate output X and Y
+            cropIntent.putExtra("outputX", 128);
+            cropIntent.putExtra("outputY", 128);
+            // retrieve data on return
+            cropIntent.putExtra("return-data", true);
+            // start the activity - we handle returning in onActivityResult
+            startActivityForResult(cropIntent, PIC_CROP);
+        }
+        // respond to users whose devices do not support the crop action
+        catch (ActivityNotFoundException anfe) {
+            // display an error message
+            String errorMessage = "Whoops - your device doesn't support the crop action!";
+            Toast toast = Toast.makeText(this, errorMessage, Toast.LENGTH_SHORT);
+            toast.show();
+        }
     }
 
     private void pickImage() {
@@ -197,21 +239,6 @@ public class SignUpActivity extends AppCompatActivity {
                 }
             }
         });
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == CropImage.CROP_IMAGE_ACTIVITY_REQUEST_CODE) {
-            CropImage.ActivityResult result = CropImage.getActivityResult(data);
-            if (resultCode == RESULT_OK) {
-                imageUri = result.getUri();
-                Glide.with(this).load(imageUri).into(binding.imgPick);
-            } else if (resultCode == CropImage.CROP_IMAGE_ACTIVITY_RESULT_ERROR_CODE) {
-                Exception exception = result.getError();
-                Log.d("TAG", "onActivityResult: " + exception);
-            }
-        }
     }
 
     @Override
